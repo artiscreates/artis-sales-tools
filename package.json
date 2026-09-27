@@ -1,0 +1,9 @@
+{
+  "name": "artis-sales-tools",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Stateless company-domain contact lookup through hosted Treg",
+  "engines": { "node": ">=22" },
+  "scripts": { "lookup": "node lookup.js", "start": "node slack.js" }
+}
