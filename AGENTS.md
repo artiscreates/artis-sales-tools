@@ -16,8 +16,10 @@ not be resubmitted as a new lookup. Preserve partial results and charged costs.
 No database, queues, agents, custom provider waterfall, ranking framework,
 HubSpot integration, extra dependencies or directory architecture. slack.js is
 only a signed command/response surface and calls the same exported lookup function.
-Slack configuration is deferred. The stub calls the same one-step lookup; live
-activation needs credentials and a URL. Deployment needs separate approval.
+Slack posts one channel-visible request message and replies in its thread using
+SLACK_BOT_TOKEN with chat:write. Confirm the parent post succeeds before paid
+enrichment. Keep each request timestamp local to its handler; never broadcast
+thread replies. The bot must be added to the channel. Deployment needs separate approval.
 
 Never commit .env or credentials. Live lookups cost money: inspect current route
 prices first, disclose the spend ceiling and retain call IDs. Keep live
