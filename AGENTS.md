@@ -2,10 +2,11 @@
 
 Keep this a small, stateless Node utility. Read README.md for the current Treg
 contract and activation gate. Use hosted Treg via ordinary fetch and one
-TREG_TOKEN; Treg owns provider selection, waterfall, finding and verification.
+TREG_TOKEN; Treg owns provider selection and the email-finding waterfall.
 
-Keep the workflow in lookup.js. Find up to ten people and automatically find/verify
-their emails in provider order. No selection prompt or title ranking. Limit total
+Keep the workflow in lookup.js. Find up to ten people and automatically find
+their emails in provider order. Trust explicit finder verification assertions;
+do not call a separate verification route. Found does not imply verified. No selection prompt or title ranking. Limit total
 spend to $0.25 per company, including discovery, using Treg's per-request ceiling
 and actual charged micro-USD. Stop on unknown cost; preserve partial results.
 Never invent identities, email

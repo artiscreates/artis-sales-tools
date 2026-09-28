@@ -16,7 +16,7 @@ function summary(result) {
   const { people, _meta: meta } = result;
   const verified = new Set(people.filter(p => p.email && p.email_status === 'verified')
     .map(p => p.email.toLowerCase())).size;
-  const lines = [`${people.length} contact record${people.length === 1 ? '' : 's'} · ${verified} unique verified email${verified === 1 ? '' : 's'}`];
+  const lines = [`${people.length} contact record${people.length === 1 ? '' : 's'} · ${verified} unique provider-verified email${verified === 1 ? '' : 's'}`];
   if (meta.status === 'discovery_only') lines.push('Discovery only — emails have not been checked.');
   else if (meta.status === 'pending') lines.push('Still processing — do not resubmit this lookup yet.');
   else if (meta.status === 'partial') lines.push('Incomplete lookup — some results could not be checked.');
@@ -28,9 +28,10 @@ function summary(result) {
 function contactStatus(person, people) {
   const lines = [];
   if (person.email) {
-    lines.push(person.email_status === 'verified' ? '✓ Email verified' :
+    lines.push(person.email_status === 'verified' ? '✓ Provider verified' :
       person.email_status === 'invalid' ? '✕ Invalid email — do not use' :
-      `Email not verified (${person.email_status ?? 'unknown'})`);
+      !person.email_status || person.email_status === 'unverified' ? 'Email found' :
+      `Email found (${person.email_status})`);
     if (people.some(p => p !== person && p.email?.toLowerCase() === person.email.toLowerCase())) {
       lines.push('Shared email in these results — confirm identity');
     }
@@ -66,7 +67,7 @@ export function resultMessage(result) {
     { type: 'section', fields: [
       { type: 'mrkdwn', text: `*${people.length}*\nContact records` },
       { type: 'mrkdwn', text: meta.status === 'discovery_only' ? '*Not checked*\nEmail verification' :
-        `*${verified}*\nUnique verified emails${invalid ? ` · ${invalid} invalid` : ''}` },
+        `*${verified}*\nUnique provider-verified emails${invalid ? ` · ${invalid} invalid` : ''}` },
     ] },
   ];
   const notices = summary(result).split('\n').slice(1);
@@ -95,7 +96,7 @@ export function resultMessage(result) {
     }
   }
   blocks.push({ type: 'context', elements: [{ type: 'plain_text',
-    text: 'Provider order · Leadership coverage is not guaranteed. Email verification does not confirm current employment.' }] });
+    text: 'Provider order · Leadership coverage is not guaranteed. Provider verification does not confirm current employment.' }] });
   return { text: formatResult(result), blocks };
 }
 

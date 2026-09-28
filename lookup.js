@@ -172,16 +172,6 @@ export async function lookup(input, { listOnly = false } = {}) {
       person.enrichment_status = meta.status === 'pending' ? 'pending' : 'partial';
       break;
     }
-    if (person.email && person.email_status !== 'verified') {
-      const verified = await call('treg.people.email.verify', { email: person.email }, index);
-      if (verified) {
-        const status = text(verified.output.status)?.toLowerCase();
-        // valid:false also covers catch-all/unknown; never collapse those to "invalid".
-        person.email_status = verified.output.valid === true &&
-          ['valid', 'deliverable', 'ok', 'verified'].includes(status) ? 'verified' :
-          status === 'verified' ? 'unknown' : status ?? 'unknown';
-      }
-    }
     person.enrichment_status = stop ? (meta.status === 'pending' ? 'pending' : 'partial') :
       meta.errors.length > errorsBefore ? 'partial' : 'complete';
   }

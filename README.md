@@ -17,13 +17,13 @@ node lookup.js example.com
 node lookup.js example.com --list
 ```
 
-The command finds up to ten people, finds missing emails, verifies unconfirmed
-emails, and prints JSON. No selection prompt, title preferences or ranking.
+The command finds up to ten people, finds missing emails, and prints JSON. It
+uses provider-returned verification evidence without a separate verification call. No selection prompt, title preferences or ranking.
 Decide whom to contact after seeing the results. It also works without a terminal.
 
 The module exports `lookup(domain)` for the full workflow. The optional
 `lookup(domain, {listOnly:true})` / CLI `--list` performs discovery only, without
-email finding or verification. It does not save a session or cache candidate data.
+email finding. It does not save a session or cache candidate data.
 The module loads the adjacent `.env` without replacing existing environment variables.
 
 The JSON result has `company`, `people`, and `_meta` with route
@@ -33,7 +33,7 @@ enrichment could not finish. Each person's `enrichment_status` is `complete`,
 `partial`, `pending` or `not_started`; an unfinished lookup is not a confirmed
 email miss. Company name is taken only from returned rows.
 `verified` means an explicit mailbox-verification assertion from Treg/the
-provider; it does not establish that a person still works at the company.
+finder or directory provider, not a fresh independent check; it does not establish that a person still works at the company.
 Catch-all, invalid and uncertain verdicts remain visible; they are not verified.
 
 Exit codes: **0** completed (including discovery-only or no-result), **1** invalid input
@@ -80,12 +80,12 @@ The implemented chain is:
 2. For each person's missing email, `treg.people.email.find` with
    `{"full_name":"…","domain":"…"}`; use `{"linkedin_url":"…"}` only when
    the name is unavailable. A hit alone does not imply verification.
-3. If a person's email is not explicitly verified, `treg.people.email.verify` with
-   `{"email":"…"}`. Its normalized fields are `valid`, provider `status` and
-   optional `score`. Only an explicit positive, non-risky verdict becomes verified.
+There is no separate email-verification step. Slack labels explicit provider
+verification as "Provider verified" and an ordinary finder hit as "Email found".
+Existing catch-all, invalid or uncertain provider labels remain visible.
 
 No email patterns are guessed. Existing usable emails are retained. Each returned
-person gets at most one finder and one verifier call. Names/titles and the original
+person gets at most one finder call. Names/titles and the original
 email remain available even when a follow-up fails. Every call has an idempotency
 key recorded in its receipt, but there are no automatic retries or local fallbacks.
 
@@ -101,20 +101,17 @@ The total budget is **$0.25 per company, including discovery**. Calls run
 sequentially. Before each call, its `X-Treg-Route-Max-Cost` is the smaller of
 **$0.05 or the remaining company budget**, calculated in integer micro-USD from
 completed charges. Calls also send `X-Treg-Route-Waterfall: 1` and
-`X-Treg-Route-Strict-Filters: 1`. Up to 21 requests can occur: one search plus at
-most one finder and verifier for each of ten people. The program stops when no
+`X-Treg-Route-Strict-Filters: 1`. Up to 11 requests can occur: one search plus at
+most one finder for each of ten people. The program stops when no
 budget remains, or when an unknown charge prevents a safe budget calculation.
 This relies on Treg enforcing the request ceiling; local code does not control
 upstream billing. `_meta.budget_usd`, `stop_reason` and each receipt's
 `max_cost_usd` expose the spending boundary. Partial results retain all people.
 
-On the common path observed in the initial sample, finding and verifying ten
-emails projects to **$0.06614**: ten times $0.004834 + $0.00178, plus any discovery
-charge. This is an estimate, not a flat quote. Prices vary by provider; some misses cost
-money. The live catalog's child price ranges were $0–$0.10 for people search,
-$0.004834–$0.15 for email finding, and $0–$0.0138 for verification. These are
-catalog units, not a flat end-to-end quote. Reinspect the catalog before changing
-limits or running a larger sample. No top-up is performed by this utility.
+Historical finder pricing observed in the initial sample was $0.004834 per hit:
+ten finder hits would cost $0.04834 plus discovery, but this is not a current
+quote. Providers and charges vary, including charges for some misses. Inspect
+the live catalog before paid evaluation. No top-up is performed by this utility.
 
 `X-Treg-Cost-Micro` is the charged amount in millionths of a dollar;
 `X-Treg-Call-Id` identifies the parent call. `_meta.calls` preserves those headers
@@ -147,7 +144,6 @@ three rows for $0. Actual participation is recorded per call, not hard-coded her
 
 Sources: [live people route](https://treg.to/catalog/endpoints/treg.people.search),
 [email finder](https://treg.to/catalog/endpoints/treg.people.email.find),
-[email verifier](https://treg.to/catalog/endpoints/treg.people.email.verify),
 [agent documentation](https://treg.to/llms.txt),
 [API reference](https://treg.to/docs),
 [Arena source documentation](https://github.com/superdesigndev/treg/blob/main/docs/context/interface/enrich-arena.md),
@@ -165,7 +161,7 @@ with the same `lookup()` result. Slash commands do not provide a parent message
 timestamp, so the app creates the parent and uses its returned `ts` for the reply.
 Results are visible to channel members. Replies are not broadcast to the channel.
 
-The result uses a company heading, original command, unique verified-email counts,
+The result uses a company heading, original command, unique provider-verified-email counts,
 and separate contact rows: name and title on the left, email and status on the
 right. Names link directly to LinkedIn when a valid profile is available. Shared email addresses
 are flagged without merging identities; invalid addresses are explicitly marked.
