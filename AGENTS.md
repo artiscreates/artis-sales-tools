@@ -4,7 +4,9 @@ Keep this a small, stateless Node utility. Read README.md for the current Treg
 contract and activation gate. Use hosted Treg via ordinary fetch and one
 TREG_TOKEN; Treg owns provider selection and the email-finding waterfall.
 
-Keep the workflow in lookup.js. Find up to ten people and automatically find
+Keep company discovery in lookup.js. The separate find-email.js accepts a domain
+and full name and makes one routed email-finder request capped at $0.05, without
+discovery. Both workflows share the existing normalization helpers. Find up to ten people and automatically find
 their emails in provider order. Trust explicit finder verification assertions;
 do not call a separate verification route. Found does not imply verified. No selection prompt or title ranking. Limit total
 spend to $0.25 per company, including discovery, using Treg's per-request ceiling
@@ -16,7 +18,8 @@ not be resubmitted as a new lookup. Preserve partial results and charged costs.
 
 No database, queues, agents, custom provider waterfall, ranking framework,
 HubSpot integration, extra dependencies or directory architecture. slack.js is
-only a signed command/response surface and calls the same exported lookup function.
+only a signed command/response surface: /find-contact calls lookup(), and
+/find-email calls findEmail().
 Slack posts one channel-visible request message and replies in its thread using
 SLACK_BOT_TOKEN with chat:write. Confirm the parent post succeeds before paid
 enrichment. Keep each request timestamp local to its handler; never broadcast

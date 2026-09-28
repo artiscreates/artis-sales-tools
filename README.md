@@ -1,8 +1,9 @@
 # artis-sales-tools
 
 A stateless company-domain lookup using hosted Treg. No dependencies, database,
-provider waterfall or ranking system. `lookup.js` owns enrichment; `slack.js` is
-the thin command surface. Both use Node's built-in modules.
+provider waterfall or ranking system. `lookup.js` owns company discovery and enrichment; `find-email.js` owns direct
+name-and-domain email finding. `slack.js` is the thin command surface. All use
+Node's built-in modules.
 
 ## Run
 
@@ -39,6 +40,32 @@ Catch-all, invalid and uncertain verdicts remain visible; they are not verified.
 Exit codes: **0** completed (including discovery-only or no-result), **1** invalid input
 or incomplete/error result, **2** a Treg task is still pending. Partial results
 remain on stdout; input/config errors go to stderr.
+
+## Find one person's email
+
+```sh
+node find-email.js example.com "Jane Smith"
+# Slack (after configuring the command):
+/find-email example.com Jane Smith
+```
+
+`find-email.js` exports `findEmail(domain, fullName)`. It normalizes the domain
+with the existing helper, trims/collapses name whitespace, and requires a nonempty
+name. It does not require two words or restrict name punctuation, check DNS, or
+verify identity. In Slack, everything after the domain is the name; quotes are
+unnecessary. The displayed name comes from the requester, not a confirmed identity.
+
+It makes one `treg.people.email.find` request with `{full_name, domain}`, without
+people discovery or a separate verification call. The request ceiling is **$0.05**;
+actual charges and call references are retained in the same JSON result shape as
+`lookup()`. Unknown company name, title and LinkedIn remain null. A found email
+is only labelled verified when the provider explicitly asserts verification;
+invalid, catch-all and uncertain statuses remain visible.
+
+No match is a completed result with a null email. Capped misses, failures and
+unknown costs are incomplete; pending tasks retain their call reference and must
+not be resubmitted. CLI exit codes are 0 completed, 1 invalid input or incomplete,
+and 2 pending. No automatic retries or separate provider waterfall are added.
 
 ## Treg investigation — 2026-09-27
 
@@ -177,7 +204,8 @@ npm start
 The service listens on `PORT` (default 3000), with `GET /health` for a healthcheck.
 Configure a Slack app with `commands` and `chat:write` bot scopes. Disable Socket
 Mode. Set `/find-contact` to `https://<service-host>/slack/commands`, leaving link
-escaping disabled. Install or reinstall the app after changing scopes. Copy its
+escaping disabled. Configure `/find-email` with the same request URL and link
+escaping disabled; its usage hint is `example.com Jane Smith`. Install or reinstall the app after changing scopes. Copy its
 Bot User OAuth Token to `SLACK_BOT_TOKEN`, then add the app to each intended channel.
 No channel-history scope, database or queue is required.
 
@@ -191,7 +219,7 @@ and [slash commands](https://docs.slack.dev/interactivity/implementing-slash-com
 
 Deployment is one continuously running Node service on Railway: Node 22+,
 `npm start`, healthcheck `/health`. Publish and deploy only with approval.
-The channel-thread update needs a bot token and live Slack verification before
+Both commands need a bot token and live Slack verification before
 activation; local integration tests use mocked Slack and Treg responses.
 
 In-flight work exists only in this process. A restart after acknowledgement can

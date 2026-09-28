@@ -3,6 +3,7 @@ import { createServer } from 'node:http';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { pathToFileURL } from 'node:url';
 import { lookup, normalizeDomain } from './lookup.js';
+import { findEmail, normalizeName } from './find-email.js';
 
 export function validSignature(body, timestamp, signature, secret) {
   if (!secret || !/^\d+$/.test(timestamp ?? '') ||
@@ -39,9 +40,9 @@ function contactStatus(person, people) {
   return lines.join('\n');
 }
 
-export function formatResult(result) {
+export function formatResult(result, commandText = `/find-contact ${result.company.domain}`) {
   const { company, people } = result;
-  const lines = [`/find-contact ${company.domain}`, company.name ?? company.domain, summary(result)];
+  const lines = [commandText, company.name ?? company.domain, summary(result)];
   for (const person of people) {
     lines.push('', [person.name ?? 'Name unavailable', person.title].filter(Boolean).join(' — '));
     if (person.email) lines.push(person.email);
@@ -55,7 +56,7 @@ export function formatResult(result) {
 const slackText = value => String(value).replace(/[\r\n*_`~]/g, ' ')
   .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 
-export function resultMessage(result) {
+export function resultMessage(result, commandText = `/find-contact ${result.company.domain}`) {
   const { company, people, _meta: meta } = result;
   const verified = new Set(people.filter(p => p.email && p.email_status === 'verified')
     .map(p => p.email.toLowerCase())).size;
@@ -63,7 +64,7 @@ export function resultMessage(result) {
     .map(p => p.email.toLowerCase())).size;
   const blocks = [
     { type: 'header', text: { type: 'plain_text', text: (company.name ?? company.domain).slice(0, 150) } },
-    { type: 'context', elements: [{ type: 'plain_text', text: `/find-contact ${company.domain}` }] },
+    { type: 'context', elements: [{ type: 'plain_text', text: commandText }] },
     { type: 'section', fields: [
       { type: 'mrkdwn', text: `*${people.length}*\nContact records` },
       { type: 'mrkdwn', text: meta.status === 'discovery_only' ? '*Not checked*\nEmail verification' :
@@ -96,8 +97,10 @@ export function resultMessage(result) {
     }
   }
   blocks.push({ type: 'context', elements: [{ type: 'plain_text',
-    text: 'Provider order · Leadership coverage is not guaranteed. Provider verification does not confirm current employment.' }] });
-  return { text: formatResult(result), blocks };
+    text: commandText.startsWith('/find-email ')
+      ? 'Name and domain supplied by requester. Provider verification does not confirm identity or current employment.'
+      : 'Provider order · Leadership coverage is not guaranteed. Provider verification does not confirm current employment.' }] });
+  return { text: formatResult(result, commandText), blocks };
 }
 
 function message(text) {
@@ -154,10 +157,18 @@ export function slackServer() {
         return send(415, { error: 'Expected a form request' });
       }
       const form = new URLSearchParams(body.toString('utf8'));
-      if (form.get('command') !== '/find-contact') return send(200, message('Unknown command. Use /find-contact example.com.'));
-      let domain;
-      try { domain = normalizeDomain(form.get('text')); }
-      catch { return send(200, message('Usage: /find-contact example.com')); }
+      const command = form.get('command');
+      if (!['/find-contact', '/find-email'].includes(command)) return send(200, message('Use /find-contact example.com or /find-email example.com Jane Smith.'));
+      let domain, name;
+      try {
+        if (command === '/find-email') {
+          const [website, ...parts] = (form.get('text') ?? '').trim().split(/\s+/);
+          domain = normalizeDomain(website);
+          name = normalizeName(parts.join(' '));
+        } else domain = normalizeDomain(form.get('text'));
+      } catch { return send(200, message(command === '/find-email'
+        ? 'Usage: /find-email example.com Jane Smith' : 'Usage: /find-contact example.com')); }
+      const commandText = `${command} ${domain}${name ? ` ${name}` : ''}`;
       const callback = responseURL(form.get('response_url'));
       if (!callback) return send(400, { error: 'Invalid Slack response URL' });
       // A redelivery must not trigger another set of paid calls.
@@ -172,17 +183,17 @@ export function slackServer() {
       try {
         // Create the thread before paying for enrichment; no bot access means no lookup.
         parent = await postMessage(botToken, { channel,
-          text: `/find-contact ${domain} — requested by <@${user}>`,
+          text: `${slackText(commandText)} — requested by <@${user}>`,
           blocks: [
-            { type: 'section', text: { type: 'mrkdwn', text: `*Contact lookup: ${domain}*\nRequested by <@${user}>` } },
+            { type: 'section', text: { type: 'mrkdwn', text: `*${name ? 'Email' : 'Contact'} lookup: ${domain}*${name ? `\n${slackText(name)}` : ''}\nRequested by <@${user}>` } },
             { type: 'context', elements: [{ type: 'plain_text', text: 'Results will appear in this thread. A lookup can take several minutes.' }] },
           ] });
-        const result = await lookup(domain);
+        const result = name ? await findEmail(domain, name) : await lookup(domain);
         // No credentials, callback URLs or contact records in service logs.
         console.log(JSON.stringify({ domain, status: result._meta.status, cost_usd: result._meta.cost_usd,
           calls: result._meta.calls.map(c => ({ call_id: c.call_id, http_status: c.http_status,
             call_ref: c.treg?.call_ref ?? null, idempotency_key: c.idempotency_key })) }));
-        await postMessage(botToken, { channel, thread_ts: parent.ts, ...resultMessage(result) });
+        await postMessage(botToken, { channel, thread_ts: parent.ts, ...resultMessage(result, commandText) });
       } catch (error) {
         console.error('Slack lookup or delivery failed; inspect Treg call receipts before retrying.');
         const failure = parent
