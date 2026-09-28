@@ -156,42 +156,48 @@ The API reference's general statement that Treg does not route applies to direct
 provider calls; the live synthetic `treg.*` catalog and routing source establish
 the supported routed behavior used here.
 
-## Slack stub — deferred
+## Slack channel threads
 
 `slack.js` verifies raw-body HMAC signatures and five-minute timestamps, accepts
-`POST /slack/commands`, acknowledges immediately, and invokes the same `lookup()`.
-It returns the completed or partial result through Slack's signed `response_url`.
-There is no contact-selection interaction. Configuration and live activation
-remain deferred.
-No bot-token API call is needed; `SLACK_BOT_TOKEN` remains an unused placeholder.
-The final-result formatter retains verification labels, while candidate lists do
-not claim that emails were searched. Pending and failed lookups remain distinct
-from honest misses.
+`POST /slack/commands`, and acknowledges immediately. It posts a channel-visible
+request message identifying the firm and requester, then replies to that message
+with the same `lookup()` result. Slash commands do not provide a parent message
+timestamp, so the app creates the parent and uses its returned `ts` for the reply.
+Results are visible to channel members. Replies are not broadcast to the channel.
+
+The result uses a company heading, original command, unique verified-email counts,
+and separate contact rows: name and title on the left, email and status on the
+right. Names link directly to LinkedIn when a valid profile is available. Shared email addresses
+are flagged without merging identities; invalid addresses are explicitly marked.
+All ten records fit in separate Slack blocks instead of truncating one long block.
+Pending, incomplete and missing results remain distinct.
+
+Required variables: `TREG_TOKEN`, `SLACK_SIGNING_SECRET`, `SLACK_BOT_TOKEN`.
 
 ```sh
-# Requires TREG_TOKEN and SLACK_SIGNING_SECRET
 npm start
 ```
 
 The service listens on `PORT` (default 3000), with `GET /health` for a healthcheck.
-Earlier local HTTP integration testing used a signed command and recorded Treg responses:
-the acknowledgement completed before enrichment was released, invalid signatures
-and callback URLs made no paid calls, and the final private result retained
-verification and LinkedIn details. No real Slack message was sent.
+Configure a Slack app with `commands` and `chat:write` bot scopes. Disable Socket
+Mode. Set `/find-contact` to `https://<service-host>/slack/commands`, leaving link
+escaping disabled. Install or reinstall the app after changing scopes. Copy its
+Bot User OAuth Token to `SLACK_BOT_TOKEN`, then add the app to each intended channel.
+No channel-history scope, database or queue is required.
 
-To activate, configure a Slack app with the `commands` scope and a `/find-contact`
-slash command whose Request URL is `https://<service-host>/slack/commands`. Install
-it in the intended workspace and supply its signing secret to the service.
-The app and credentials have not been created or configured in this session.
-See Slack's [signature verification](https://docs.slack.dev/authentication/verifying-requests-from-slack/)
-and [slash-command documentation](https://docs.slack.dev/interactivity/implementing-slash-commands/).
+The parent message must be posted successfully before enrichment starts. Missing
+channel access produces a private setup error without paying for a lookup.
+Concurrent requests keep separate parent timestamps. Neither API calls nor failed
+lookups are automatically retried. Provider text is escaped to prevent mentions.
 
-The deployment shape is one continuously running Node service on Railway:
-Node 22+, start command `npm start`, healthcheck `/health`, and only `TREG_TOKEN`
-and `SLACK_SIGNING_SECRET` as required secrets. No database, worker, cron or
-separate enrichment service. Railway deployment awaits approval and a target project/service.
+See Slack's [message API](https://docs.slack.dev/reference/methods/chat.postMessage/)
+and [slash commands](https://docs.slack.dev/interactivity/implementing-slash-commands/).
+
+Deployment is one continuously running Node service on Railway: Node 22+,
+`npm start`, healthcheck `/health`. Publish and deploy only with approval.
+The channel-thread update needs a bot token and live Slack verification before
+activation; local integration tests use mocked Slack and Treg responses.
 
 In-flight work exists only in this process. A restart after acknowledgement can
-lose the Slack result; paid Treg receipts remain upstream. No durable retry queue
-or automatic provider-task resume is implemented. Keep this as a pilot until
-live workspace delivery and the selected Railway runtime are verified.
+lose the result; paid Treg receipts remain upstream. Inspect existing receipts
+before retrying a lookup whose completion or delivery is uncertain.
