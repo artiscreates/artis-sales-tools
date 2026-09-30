@@ -21,6 +21,10 @@
     .artis-crm-email[data-artis="yellow"] { background: #ffecb0 !important; color: #5c4300 !important; box-shadow: inset 0 -2px #e0a800; }
     .artis-crm-email[data-artis="red"]    { background: #fcd0d0 !important; color: #7a1414 !important; box-shadow: inset 0 -2px #e02424; }
     a.artis-crm-email { text-decoration: none !important; }
+    #artis-crm-pill { margin-left: 10px; padding: 3px 10px; border-radius: 999px; font: 600 12px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; white-space: nowrap; align-self: center; }
+    #artis-crm-pill[data-artis="green"]  { background: #e7f6ec; color: #136c34; }
+    #artis-crm-pill[data-artis="yellow"] { background: #fff5d6; color: #7a5a00; }
+    #artis-crm-pill[data-artis="red"]    { background: #fde8e8; color: #9b1c1c; }
   `;
   (document.head || document.documentElement).appendChild(style);
 
@@ -62,7 +66,26 @@
 
   function esc(s) { return String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 
+  // Status pill next to the Instagram username. Re-added if Instagram re-renders.
+  function renderPill() {
+    const old = document.getElementById('artis-crm-pill');
+    if (!site || site.code || site.kind !== 'instagram') return old?.remove();
+    const name = [...document.querySelectorAll('header h1, header h2')].find((e) => e.textContent.trim().toLowerCase() === site.handle);
+    if (!name) return;
+    const pill = old || document.createElement('span');
+    const text = `${COLORS[site.status].label} · ${site.reason}`;
+    pill.id = 'artis-crm-pill';
+    if (pill.dataset.artis !== site.status) pill.dataset.artis = site.status;
+    if (pill.textContent !== text) { pill.textContent = text; pill.title = `Artis CRM Check: ${text}`; }
+    const anchor = name.closest('a') || name;
+    if (anchor.nextElementSibling !== pill) anchor.after(pill);
+  }
+
   function renderBanner() {
+    const ok = site && !site.code;
+    chrome.runtime.sendMessage({ type: 'badge', status: ok ? site.status : null,
+      title: ok ? `Artis CRM Check: ${COLORS[site.status].label} · ${site.reason}` : null }).catch(() => {});
+    renderPill();
     if (!settings.banner) return host.remove();
     const counts = { red: 0, yellow: 0, green: 0 };
     for (const v of Object.values(results)) counts[v.status]++;
@@ -160,6 +183,13 @@
       const d = normalizeDomain(unwrapLink(a.href));
       if (d && !isPlatform(d)) return d;
     }
+    // Several bio links render as a button: "studio.com and 1 more".
+    for (const el of document.querySelectorAll('header *')) {
+      if (el.children.length) continue;
+      const m = el.textContent.trim().match(/^((?:[a-z0-9-]+\.)+[a-z]{2,})(?:\/\S*)?(?: and \d+ more)?$/i);
+      const d = m && normalizeDomain(m[1]);
+      if (d && !isPlatform(d)) return d;
+    }
     return null;
   }
 
@@ -183,7 +213,7 @@
       const s = currentSite();
       const wantSite = s && s.key !== lastSiteKey;
       if (!s && site && !site.code) { site = null; renderBanner(); }
-      if (!emails.length && !wantSite) { paint(); return; }
+      if (!emails.length && !wantSite) { paint(); renderPill(); return; }
       if (wantSite) lastSiteKey = s.key;
       const r = await chrome.runtime.sendMessage({
         type: 'lookup',
@@ -223,7 +253,7 @@
 
   let timer = null;
   const observer = new MutationObserver((muts) => {
-    if (muts.every((m) => [...m.addedNodes].every((n) => n.nodeType === 1 && (n.classList?.contains('artis-crm-email') || n === host)))) return;
+    if (muts.every((m) => [...m.addedNodes].every((n) => n.nodeType === 1 && (n.classList?.contains('artis-crm-email') || n === host || n.id === 'artis-crm-pill')))) return;
     clearTimeout(timer);
     timer = setTimeout(run, 1500);
   });

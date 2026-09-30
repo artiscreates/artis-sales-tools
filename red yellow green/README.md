@@ -3,10 +3,10 @@
 A Chrome extension that shows a red / yellow / green HubSpot status based on rules of engagement. It checks three things:
 
 - **Websites.** The site's domain is matched against HubSpot company domains and contact email domains.
-- **Instagram profiles.** The handle is matched against the company's Instagram Handle, and the website link in the bio is checked like any other website.
+- **Instagram profiles.** The handle is matched against the company's Instagram Handle or Instagram (URL) field, and the website link in the bio is checked like any other website.
 - **Emails.** Every email on the page is matched against HubSpot contacts and that contact's company, then highlighted in place.
 
-Results show in a card in the bottom-right corner. The toolbar popup also checks any website, email or @handle you paste in.
+Results show in a card in the bottom-right corner and as a colored dot on the toolbar icon. On Instagram, a status pill also appears next to the username. The toolbar popup checks any website, email or @handle you paste in.
 
 ## Colors
 

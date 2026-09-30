@@ -123,12 +123,14 @@ function lookupDomain(domain, ctx) {
   });
 }
 
-// Instagram: companies by instagram_handle.
+// Instagram: companies by instagram_handle, or by the handle inside the
+// instagram_url field (some records only have the URL, in varying formats).
 function lookupHandle(handle, ctx) {
   return cached(`h:${handle}`, async () => {
     const companies = await search('companies', [
       { filters: [{ propertyName: 'instagram_handle', operator: 'EQ', value: handle }] },
-      { filters: [{ propertyName: 'instagram_handle', operator: 'EQ', value: `@${handle}` }] }
+      { filters: [{ propertyName: 'instagram_handle', operator: 'EQ', value: `@${handle}` }] },
+      { filters: [{ propertyName: 'instagram_url', operator: 'CONTAINS_TOKEN', value: handle }] }
     ], COMPANY_PROPS);
     return summarize(companies.map((c) => describe('company', c, ctx)), `@${handle}`);
   });
@@ -210,7 +212,17 @@ async function lookup({ domain, handle, bioDomain, emails = [] }) {
   return { site, emails: emailResults };
 }
 
-chrome.runtime.onMessage.addListener((msg, _sender, reply) => {
+const BADGE = { red: '#e02424', yellow: '#e0a800', green: '#1f9d55' };
+
+chrome.runtime.onMessage.addListener((msg, sender, reply) => {
+  // Colored dot on the toolbar icon for the page's site status.
+  if (msg?.type === 'badge' && sender.tab) {
+    const tabId = sender.tab.id;
+    chrome.action.setBadgeText({ tabId, text: msg.status ? ' ' : '' });
+    chrome.action.setTitle({ tabId, title: msg.title || 'Artis CRM Check' });
+    if (msg.status) chrome.action.setBadgeBackgroundColor({ tabId, color: BADGE[msg.status] });
+    return;
+  }
   if (msg?.type === 'lookup') {
     lookup(msg).then((r) => reply({ ok: true, ...r }), (e) => reply({ ok: false, error: e.message, code: e.code }));
     return true;
