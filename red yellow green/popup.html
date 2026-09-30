@@ -1,0 +1,36 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<style>
+  body { width: 320px; margin: 0; font: 13px/1.4 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1a1a1a; }
+  header { padding: 12px 14px 8px; font-weight: 700; font-size: 14px; display: flex; justify-content: space-between; align-items: center; }
+  header a { font-weight: 500; font-size: 12px; color: #666; }
+  section { padding: 0 14px 12px; }
+  form { display: flex; gap: 6px; }
+  input { flex: 1; padding: 7px 8px; border: 1px solid #ccc; border-radius: 7px; font: inherit; }
+  button { padding: 7px 10px; border: 0; border-radius: 7px; background: #1a1a1a; color: #fff; font: inherit; cursor: pointer; }
+  .res { margin-top: 8px; }
+  .item { border-radius: 9px; padding: 8px 10px; margin-top: 6px; }
+  .item b { display: block; }
+  .item a { color: inherit; font-weight: 600; }
+  .green { background: #e7f6ec; color: #136c34; } .yellow { background: #fff5d6; color: #7a5a00; }
+  .red { background: #fde8e8; color: #9b1c1c; } .grey { background: #f1f1f1; color: #444; }
+  .label { font-size: 11px; text-transform: uppercase; letter-spacing: .04em; color: #777; margin: 4px 0 2px; }
+</style>
+</head>
+<body>
+  <header>Artis CRM Check <a href="#" id="opts">Settings</a></header>
+  <section>
+    <div class="label">This page</div>
+    <div id="site"></div>
+  </section>
+  <section>
+    <div class="label">Check a website, email or @handle</div>
+    <form id="f"><input id="q" placeholder="studio.com · name@studio.com · @studio" autocomplete="off"><button>Check</button></form>
+    <div class="res" id="out"></div>
+  </section>
+  <script src="lib.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

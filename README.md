@@ -225,3 +225,10 @@ activation; local integration tests use mocked Slack and Treg responses.
 In-flight work exists only in this process. A restart after acknowledgement can
 lose the result; paid Treg receipts remain upstream. Inspect existing receipts
 before retrying a lookup whose completion or delivery is uncertain.
+
+## Red yellow green (Chrome extension)
+
+`red yellow green/` is a separate Chrome extension that shows whether the
+website, Instagram profile or email a rep is looking at is already in HubSpot,
+colored by rules of engagement. See `red yellow green/README.md` for the rules,
+setup and install steps.

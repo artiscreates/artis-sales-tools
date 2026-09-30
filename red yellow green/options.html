@@ -1,0 +1,49 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Artis CRM Check settings</title>
+<style>
+  body { max-width: 560px; margin: 32px auto; padding: 0 16px; font: 14px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; color: #1a1a1a; }
+  h1 { font-size: 20px; margin-bottom: 4px; }
+  p.sub { color: #666; margin-top: 0; }
+  label { display: block; font-weight: 600; margin: 18px 0 4px; }
+  .hint { color: #666; font-size: 12px; font-weight: 400; }
+  input[type=password], input[type=number] { width: 100%; box-sizing: border-box; padding: 8px 10px; border: 1px solid #ccc; border-radius: 8px; font: inherit; }
+  input[type=number] { width: 110px; }
+  .check { display: flex; gap: 8px; align-items: center; font-weight: 400; margin: 8px 0; }
+  button { margin-top: 20px; margin-right: 8px; padding: 9px 14px; border: 0; border-radius: 8px; background: #1a1a1a; color: #fff; font: inherit; cursor: pointer; }
+  button.secondary { background: #eee; color: #1a1a1a; }
+  #msg { margin-top: 14px; padding: 10px 12px; border-radius: 8px; display: none; }
+  .ok { background: #e7f6ec; color: #136c34; } .bad { background: #fde8e8; color: #9b1c1c; }
+  table { border-collapse: collapse; margin-top: 8px; font-size: 13px; }
+  td { padding: 4px 10px 4px 0; vertical-align: top; }
+  .sw { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 6px; }
+</style>
+</head>
+<body>
+  <h1>Artis CRM Check</h1>
+  <p class="sub">Shows whether the website or Instagram profile you're on, and each email on the page, is already in HubSpot.</p>
+
+  <label for="token">HubSpot private app token <span class="hint">(read-only scopes: companies, contacts, owners)</span></label>
+  <input id="token" type="password" placeholder="pat-na1-…" autocomplete="off">
+
+  <label for="window">Red if an email or call was logged within <span class="hint">(days)</span></label>
+  <input id="window" type="number" min="1" max="730">
+
+  <label>Display</label>
+  <div class="check"><input type="checkbox" id="banner"> <span>Show the status card in the corner of each page</span></div>
+  <div class="check"><input type="checkbox" id="highlight"> <span>Highlight emails on the page</span></div>
+
+  <button id="save">Save</button><button id="test" class="secondary">Test connection</button>
+  <div id="msg"></div>
+
+  <label>What the colors mean</label>
+  <table>
+    <tr><td><span class="sw" style="background:#e02424"></span><b>Red</b></td><td>Customer (current or former), open deal, opted out of email, or an email or call logged within the window. Not contactable.</td></tr>
+    <tr><td><span class="sw" style="background:#e0a800"></span><b>Yellow</b></td><td>In HubSpot, but no email or call logged within the window. Contactable under rules of engagement.</td></tr>
+    <tr><td><span class="sw" style="background:#1f9d55"></span><b>Green</b></td><td>Not in HubSpot. Net new.</td></tr>
+  </table>
+  <script src="options.js"></script>
+</body>
+</html>
