@@ -24,12 +24,6 @@
       ],
       "iframe": [],
       "img": []
-    },
-    "support": {
-      "supportEmail": "support@example.com",
-      "documentationUrl": "https://example.com/docs",
-      "supportUrl": "https://example.com/support",
-      "supportPhone": "+18005555555"
     }
   }
 }
