@@ -257,13 +257,6 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     lookup(msg).then((r) => reply({ ok: true, ...r }), (e) => reply({ ok: false, error: e.message, code: e.code }));
     return true;
   }
-  if (msg?.type === 'test') {
-    account = null; owners = null; cache.clear();
-    Promise.all([getAccount(), getOwners()])
-      .then(([a, o]) => reply({ ok: true, portalId: a.portalId, owners: Object.keys(o).length }))
-      .catch((e) => reply({ ok: false, error: e.message }));
-    return true;
-  }
   if (msg?.type === 'connectHubSpot') {
     connectHubSpot().then((r) => reply({ ok: true, ...r }), (e) => reply({ ok: false, error: e.message }));
     return true;

@@ -28,13 +28,15 @@ HubSpot authorizes each rep through their own user login. This app uses the 2026
 
 1. Create/configure a HubSpot project-based OAuth app with scopes `oauth`, `crm.objects.companies.read`, `crm.objects.contacts.read`, and `crm.objects.owners.read`.
 2. Set its OAuth redirect URL to `http://localhost:3000/oauth/callback` for local development.
-3. Load the extension unpacked once and copy its extension ID from `chrome://extensions`.
-4. Set `CRM_CHECK_URL=http://localhost:3000`, `CRM_CHECK_EXTENSION_ID`, `HUBSPOT_CLIENT_ID`, `HUBSPOT_CLIENT_SECRET`, and the approved numeric portal ID(s) in `HUBSPOT_ALLOWED_PORTAL_IDS` (comma-separated) in the service environment. Generate a random 32-byte hex `CRM_CHECK_STORE_KEY` and keep it private.
+3. Give each rep the same release ZIP. They should extract it and choose that folder in `chrome://extensions` → **Load unpacked**. The manifest public key keeps the development extension ID consistent (`dligidhechdcofgnnlfdadoepjcngfgi`).
+4. Set `CRM_CHECK_URL=http://localhost:3000`, `CRM_CHECK_EXTENSION_ID=dligidhechdcofgnnlfdadoepjcngfgi`, `HUBSPOT_CLIENT_ID`, `HUBSPOT_CLIENT_SECRET`, and the approved numeric portal ID(s) in `HUBSPOT_ALLOWED_PORTAL_IDS` (comma-separated) in the service environment. Generate a random 32-byte hex `CRM_CHECK_STORE_KEY` and keep it private.
 5. Run `node 'red yellow green/service.js'` with Node 22 or newer. The encrypted token store defaults to `/tmp` locally. For hosting, set `CRM_CHECK_STORE` to a durable mounted volume path and keep one service instance; back up the encryption key separately.
 6. For local testing, set `service-config.js` to `http://localhost:3000`; for the packaged release, it points at the deployed HTTPS service URL and `manifest.json` grants optional host access only to localhost and that service.
 7. Load the extension from `chrome://extensions`, open Settings, and select **Connect HubSpot**.
 
 Do not commit OAuth credentials, the encryption key, or the encrypted token store. Never use a committed HubSpot token. The service only supports the API reads in `background.js`. Its `/health` endpoint is available for a host health check.
+
+This shared ID is for unpacked team testing. A future Chrome Web Store listing can assign a different ID; update `CRM_CHECK_EXTENSION_ID` and reload the extension package together if that happens.
 
 ## Distribution and production activation
 

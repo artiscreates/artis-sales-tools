@@ -1,7 +1,8 @@
 {
   "manifest_version": 3,
   "name": "Artis CRM Check",
-  "version": "1.4.0",
+  "version": "1.4.2",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA2Tx64bFsVfoELsDZkJ1IDqbz/Xd/+01E7eBD1562ximxDSanUR3g7UraRBpSAfDMoxvX64drYwv5ZWzhZ1ivNU2Mq0w7sG0SCGwATGb+5W92n/Q1KqL/SbW6nIACQHmmfRjLIg11CPB/LSVwAmW/XEU5lssPc+xDO4r2HGXFIuPZZNtsJQZZfJ/boRbIPvQco/2BiIubKfNSuSU+QbUTuAIklO4IfpDdDGVtKFALWnXdUVIDyBB7CrCnsghx74OyYMhTVa0sj1liXGsqoIzQ9uC7qBHfpL9EbRoR6+CUsTT1O+RVUualwTQ1MFXrjSgsjQ2io17SvUZzapwTgqLOaQIDAQAB",
   "description": "Red / yellow / green HubSpot status for the website or Instagram profile you're on, and every email on the page.",
   "permissions": ["storage", "identity"],
   "optional_host_permissions": ["http://localhost:3000/*", "https://red-yellow-green-oauth-production.up.railway.app/*"],
