@@ -1,4 +1,4 @@
-const DEFAULTS = { token: '', windowDays: 45, banner: true, highlight: true };
+const DEFAULTS = { banner: true, highlight: true };
 const $ = (id) => document.getElementById(id);
 
 function show(text, ok) {
@@ -9,17 +9,19 @@ function show(text, ok) {
 }
 
 chrome.storage.sync.get(DEFAULTS).then((s) => {
-  $('token').value = s.token;
-  $('window').value = s.windowDays;
   $('banner').checked = s.banner;
   $('highlight').checked = s.highlight;
 });
 
+async function refreshConnection() {
+  const { portalId } = await chrome.storage.local.get({ portalId: null });
+  $('connection').textContent = portalId ? `Connected to HubSpot portal ${portalId}.` : 'Not connected to HubSpot.';
+  $('disconnect').style.display = portalId ? '' : 'none';
+}
+refreshConnection();
+
 async function save() {
-  const windowDays = Math.max(1, Math.min(730, parseInt($('window').value, 10) || 45));
   await chrome.storage.sync.set({
-    token: $('token').value.trim(),
-    windowDays,
     banner: $('banner').checked,
     highlight: $('highlight').checked
   });
@@ -27,10 +29,17 @@ async function save() {
 }
 
 $('save').addEventListener('click', async () => { await save(); show('Saved. Reload open tabs to apply.', true); });
-$('test').addEventListener('click', async () => {
-  await save();
-  show('Testing…', true);
-  const r = await chrome.runtime.sendMessage({ type: 'test' });
-  if (r?.ok) show(`Connected to HubSpot portal ${r.portalId ?? '(ID hidden)'} · ${r.owners} owners found.`, true);
+$('connect').addEventListener('click', async () => {
+  const serviceOrigin = new URL(self.ARTIS_CRM_SERVICE_URL).origin;
+  const permission = await chrome.permissions.request({ origins: [`${serviceOrigin}/*`] });
+  if (!permission) return show('Allow access to the configured Artis CRM Check service, then try again.', false);
+  show('Connecting to HubSpot…', true);
+  const r = await chrome.runtime.sendMessage({ type: 'connectHubSpot' });
+  if (r?.ok) { await refreshConnection(); show('HubSpot connected.', true); }
   else show(r?.error || 'Connection failed.', false);
+});
+$('disconnect').addEventListener('click', async () => {
+  const r = await chrome.runtime.sendMessage({ type: 'disconnectHubSpot' });
+  if (r?.ok) { await refreshConnection(); show('Disconnected from HubSpot.', true); }
+  else show(r?.error || 'Could not disconnect.', false);
 });

@@ -1,40 +1,41 @@
 # Artis CRM Check
 
-A Chrome extension that shows a red / yellow / green HubSpot status based on rules of engagement. It checks three things:
+A Chrome extension that shows red / yellow / green HubSpot status while reps prospect. It checks:
 
-- **Websites.** The site's domain is matched against HubSpot company domains and contact email domains.
-- **Instagram profiles.** The handle is matched against the company's Instagram Handle or Instagram (URL) field, and the website link in the bio is checked like any other website.
-- **Emails.** Every email on the page is matched against HubSpot contacts and that contact's company, then highlighted in place.
+- **Websites:** company domains and contact email domains.
+- **Instagram:** company handle or profile URL, plus the domain linked in the bio.
+- **Emails:** contacts and their associated company; free email domains match by exact email only.
 
-Results show in a card in the bottom-right corner and as a colored dot on the toolbar icon. On Instagram, a status pill also appears next to the username. The toolbar popup checks any website, email or @handle you paste in.
+Results appear in a card at the bottom-right of the page and as a colored toolbar dot. Instagram also gets a status pill by the username. The popup checks a pasted website, email, or `@handle`.
 
-## Colors
+## Rules
 
 | Color | Rule |
 |---|---|
-| Red | In HubSpot and not contactable: lifecycle stage Customer (current or former), an open deal, opted out of email, or an email or call logged in the last 45 days. |
-| Yellow | In HubSpot, but no email or call logged in the last 45 days. |
-| Green | Not in HubSpot. |
+| Red | Customer or former customer, open deal, email opt-out, or `notes_last_contacted` within 45 days. |
+| Yellow | Any other HubSpot match. |
+| Green | No HubSpot match. |
 
-"Email or call logged" is HubSpot's Last Contacted date, on the company or the contact. When several records match, the most restrictive color wins. Ownership shows in the label but doesn't change the color. Free email addresses (Gmail, Yahoo, iCloud and so on) match on the exact address only. You can change the 45-day window in Settings.
+When multiple records match, the most restrictive color wins. Ownership appears in the explanation only. The 45-day window is fixed.
 
-## Setup (once, by an admin)
+## OAuth architecture
 
-1. In HubSpot, create a **private app**. It's under Settings → Integrations → Private Apps (newer portals may list it under Development → Legacy apps). Give it these read-only scopes:
-   - `crm.objects.companies.read`
-   - `crm.objects.contacts.read`
-   - `crm.objects.owners.read`
-2. Copy the access token (`pat-na1-…`).
+Reps connect through HubSpot's sign-in and authorization flow. The extension never asks them to copy a HubSpot token. A small Node service exchanges OAuth codes, stores HubSpot access and refresh tokens encrypted, refreshes them, and proxies only the extension's read-only HubSpot endpoints. It grants no general HubSpot API proxy access.
 
-## Install (each rep)
+HubSpot authorizes each rep through their own user login. This app uses the 2026.09 user-level OAuth setting so API requests follow that rep's HubSpot permissions. The initial rollout is private to the approved company portal.
 
-1. Unzip `artis-crm-check.zip`.
-2. Open `chrome://extensions`, turn on **Developer mode**, click **Load unpacked**, and pick the unzipped folder.
-3. Pin the extension. Click it, then **Settings**. Paste the token, click **Test connection**, then **Save**.
+## Local setup
 
-To roll it out without Developer mode, publish it to the Chrome Web Store as **Unlisted** or **Private** (Private limits it to your Google Workspace domain). Workspace admins can then force-install it for the sales team.
+1. Create/configure a HubSpot project-based OAuth app with scopes `oauth`, `crm.objects.companies.read`, `crm.objects.contacts.read`, and `crm.objects.owners.read`.
+2. Set its OAuth redirect URL to `http://localhost:3000/oauth/callback` for local development.
+3. Load the extension unpacked once and copy its extension ID from `chrome://extensions`.
+4. Set `CRM_CHECK_URL=http://localhost:3000`, `CRM_CHECK_EXTENSION_ID`, `HUBSPOT_CLIENT_ID`, `HUBSPOT_CLIENT_SECRET`, and the approved numeric portal ID(s) in `HUBSPOT_ALLOWED_PORTAL_IDS` (comma-separated) in the service environment. Generate a random 32-byte hex `CRM_CHECK_STORE_KEY` and keep it private.
+5. Run `node 'red yellow green/service.js'` with Node 22 or newer. The encrypted token store defaults to `/tmp` locally. For hosting, set `CRM_CHECK_STORE` to a durable mounted volume path and keep one service instance; back up the encryption key separately.
+6. For local testing, set `service-config.js` to `http://localhost:3000`; for the packaged release, it points at the deployed HTTPS service URL and `manifest.json` grants optional host access only to localhost and that service.
+7. Load the extension from `chrome://extensions`, open Settings, and select **Connect HubSpot**.
 
-## Notes
+Do not commit OAuth credentials, the encryption key, or the encrypted token store. Never use a committed HubSpot token. The service only supports the API reads in `background.js`. Its `/health` endpoint is available for a host health check.
 
-- Every rep's browser holds the token. Keep the private app's scopes read-only.
-- Lookups are cached for 10 minutes per domain or email, to stay under HubSpot's rate limits.
+## Distribution and production activation
+
+Publish privately or unlisted through the Chrome Web Store, or use the organization's managed Chrome deployment. Configure the HubSpot project app to allowlist the approved portal and use the deployed service callback URL. Production hosting, HubSpot app creation/configuration, and extension publishing require separate approval. Do not use the local development OAuth credentials in production.

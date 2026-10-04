@@ -1,4 +1,4 @@
-importScripts('lib.js');
+importScripts('lib.js', 'service-config.js');
 const { normalizeDomain, normalizeEmail, normalizeHandle, isFreeMail, isPlatform, evaluateRecord, worst } = self.ArtisCRM;
 
 const CACHE_TTL = 10 * 60 * 1000;
@@ -12,21 +12,25 @@ const CONTACT_PROPS = ['email', 'firstname', 'lastname', 'hubspot_owner_id', 'li
   'hs_email_optout', 'notes_last_contacted', 'associatedcompanyid'];
 
 async function settings() {
-  const s = await chrome.storage.sync.get({ token: '', windowDays: 45 });
-  const local = await chrome.storage.local.get({ apiBase: 'https://api.hubapi.com' });
-  return { token: s.token, apiBase: local.apiBase, windowDays: Number(s.windowDays) || 45 };
+  const local = await chrome.storage.local.get({ sessionToken: '' });
+  return { sessionToken: local.sessionToken, windowDays: 45 };
 }
 
 async function hs(path, { method = 'GET', body } = {}, tries = 4) {
-  const { token, apiBase } = await settings();
-  if (!token) throw Object.assign(new Error('Add your HubSpot token in the extension settings.'), { code: 'NO_TOKEN' });
-  const res = await fetch(apiBase + path, {
-    method,
-    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
-    body: body ? JSON.stringify(body) : undefined
+  const { sessionToken } = await settings();
+  if (!sessionToken) throw Object.assign(new Error('Connect HubSpot in the extension settings.'), { code: 'NO_TOKEN' });
+  const res = await fetch(`${self.ARTIS_CRM_SERVICE_URL}/api/hubspot`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${sessionToken}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path, method, body })
   });
-  if (res.status === 401) throw Object.assign(new Error('HubSpot rejected the token. Check it in settings.'), { code: 'AUTH' });
-  if (res.status === 403) throw Object.assign(new Error('Token is missing a required HubSpot scope.'), { code: 'SCOPE' });
+  if (res.status === 401) {
+    await chrome.storage.local.remove(['sessionToken', 'portalId']);
+    cache.clear();
+    owners = null; account = null;
+    throw Object.assign(new Error('HubSpot connection expired. Reconnect in settings.'), { code: 'AUTH' });
+  }
+  if (res.status === 403) throw Object.assign(new Error('HubSpot access is missing a required read scope.'), { code: 'SCOPE' });
   // Search is limited to a few requests per second per portal; wait and retry.
   if (res.status === 429 && tries > 1) {
     await new Promise((r) => setTimeout(r, (Number(res.headers.get('Retry-After')) || 1) * 1000));
@@ -212,6 +216,32 @@ async function lookup({ domain, handle, bioDomain, emails = [] }) {
   return { site, emails: emailResults };
 }
 
+async function connectHubSpot() {
+  const state = [...crypto.getRandomValues(new Uint8Array(32))].map((b) => b.toString(16).padStart(2, '0')).join('');
+  const start = `${self.ARTIS_CRM_SERVICE_URL}/oauth/start?state=${state}`;
+  const redirected = await chrome.identity.launchWebAuthFlow({ url: start, interactive: true });
+  if (!redirected) throw new Error('HubSpot sign-in was cancelled.');
+  const returned = new URL(redirected);
+  if (returned.origin !== `https://${chrome.runtime.id}.chromiumapp.org` || returned.searchParams.get('state') !== state) throw new Error('HubSpot authorization could not be verified. Try connecting again.');
+  const response = await fetch(`${self.ARTIS_CRM_SERVICE_URL}/oauth/claim`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ticket: returned.searchParams.get('ticket'), state })
+  });
+  const result = await response.json();
+  if (!response.ok || !result.sessionToken) throw new Error(result.error || 'HubSpot connection failed.');
+  await chrome.storage.local.set({ sessionToken: result.sessionToken, portalId: result.portalId });
+  cache.clear(); owners = null; account = null;
+  return { portalId: result.portalId };
+}
+
+async function disconnectHubSpot() {
+  const { sessionToken } = await settings();
+  if (sessionToken) await fetch(`${self.ARTIS_CRM_SERVICE_URL}/session`, { method: 'DELETE', headers: { Authorization: `Bearer ${sessionToken}` } });
+  await chrome.storage.local.remove(['sessionToken', 'portalId']);
+  cache.clear(); owners = null; account = null;
+  return { ok: true };
+}
+
 const BADGE = { red: '#e02424', yellow: '#e0a800', green: '#1f9d55' };
 
 chrome.runtime.onMessage.addListener((msg, sender, reply) => {
@@ -232,6 +262,14 @@ chrome.runtime.onMessage.addListener((msg, sender, reply) => {
     Promise.all([getAccount(), getOwners()])
       .then(([a, o]) => reply({ ok: true, portalId: a.portalId, owners: Object.keys(o).length }))
       .catch((e) => reply({ ok: false, error: e.message }));
+    return true;
+  }
+  if (msg?.type === 'connectHubSpot') {
+    connectHubSpot().then((r) => reply({ ok: true, ...r }), (e) => reply({ ok: false, error: e.message }));
+    return true;
+  }
+  if (msg?.type === 'disconnectHubSpot') {
+    disconnectHubSpot().then((r) => reply(r), (e) => reply({ ok: false, error: e.message }));
     return true;
   }
   if (msg?.type === 'clearCache') { cache.clear(); account = null; owners = null; reply({ ok: true }); }

@@ -45,6 +45,10 @@ with the Node utility; the Node rules above do not apply to it.
 - When several records match, the most restrictive color wins. Ownership is
   shown in the label only and never changes the color.
 - All color rules live in `evaluateRecord` in `lib.js`; change them there only.
-- HubSpot access is read-only (companies, contacts, owners). The token is
-  entered in the extension's settings; never commit it.
+- HubSpot access is read-only (companies, contacts, owners) through OAuth. The
+  extension holds only a revocable service session; OAuth client and refresh
+  tokens stay in the encrypted service store. Never commit credentials.
+- Keep the OAuth service dependency-free and limited to this extension. Its
+  encrypted file store requires one service instance and durable storage; do
+  not deploy replicas without replacing that store with shared storage.
 - Bump `version` in `manifest.json` for every release.

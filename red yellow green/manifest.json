@@ -1,10 +1,10 @@
 {
   "manifest_version": 3,
   "name": "Artis CRM Check",
-  "version": "1.2.0",
+  "version": "1.4.0",
   "description": "Red / yellow / green HubSpot status for the website or Instagram profile you're on, and every email on the page.",
-  "permissions": ["storage"],
-  "host_permissions": ["https://api.hubapi.com/*"],
+  "permissions": ["storage", "identity"],
+  "optional_host_permissions": ["http://localhost:3000/*", "https://red-yellow-green-oauth-production.up.railway.app/*"],
   "background": { "service_worker": "background.js" },
   "content_scripts": [
     {

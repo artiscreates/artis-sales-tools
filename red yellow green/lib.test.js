@@ -61,7 +61,7 @@ test('evaluateRecord: 45/46-day boundary', () => {
   assert.equal(ev({ notes_last_contacted: ago(0) }).reason, 'Contacted today');
   assert.equal(ev({ notes_last_contacted: new Date(NOW + DAY).toISOString() }).status, 'red'); // clock skew
   assert.equal(ev({ notes_last_contacted: String(NOW - 10 * DAY) }).status, 'red'); // epoch-ms string
-  assert.equal(ev({ notes_last_contacted: ago(20) }, { windowDays: 14 }).status, 'yellow');
+  assert.equal(ev({ notes_last_contacted: ago(20) }, { windowDays: 14 }).status, 'red');
 });
 
 test('evaluateRecord: red rules', () => {

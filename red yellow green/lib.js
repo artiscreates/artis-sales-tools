@@ -91,7 +91,7 @@
   //   Yellow: in HubSpot, none of the above.
   //   (Green = no record at all; decided by the caller.)
   // Ownership only affects the label, never the color.
-  function evaluateRecord(props, { windowDays = 45, now = Date.now(), ownerName = null } = {}) {
+  function evaluateRecord(props, { now = Date.now(), ownerName = null } = {}) {
     const stage = (props.lifecyclestage || '').toLowerCase();
     const openDeals = Number(props.hs_num_open_deals || 0);
     const last = lastActivityMs(props);
@@ -106,7 +106,7 @@
     }
     if (openDeals > 0) return { status: 'red', reason: `Open deal${who}` };
     if (String(props.hs_email_optout) === 'true') return { status: 'red', reason: 'Opted out of email' };
-    if (days !== null && days <= windowDays) return { status: 'red', reason: `${touch[0].toUpperCase()}${touch.slice(1)}${who}` };
+    if (days !== null && days <= 45) return { status: 'red', reason: `${touch[0].toUpperCase()}${touch.slice(1)}${who}` };
     return { status: 'yellow', reason: `In HubSpot · ${touch}${who}` };
   }
 
